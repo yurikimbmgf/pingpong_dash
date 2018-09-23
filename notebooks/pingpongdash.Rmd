@@ -1,0 +1,221 @@
+---
+title: "Ping Pong"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: scroll
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(ggthemes)
+library(scales)
+library(plotly)
+library(kableExtra)
+
+raw_scores <- read_csv("..//data//scores.csv")
+
+# df for main visual
+differences <- raw_scores %>% 
+  # Getting the difference number
+  mutate(diff = andrew - yuri) %>% 
+  # Showing the winner
+  mutate(winner = case_when(
+    diff > 0 ~ "Andrew",
+    TRUE ~ "Yuri"
+  )) %>% 
+  # Getting scores for the winners. need to make a negative for one of them to match the visual
+  mutate(yuri_score = yuri * -1,
+         andrew_score = andrew) %>% 
+  # Making the actual date a date format
+  mutate(date = as.Date(date, tryFormats = c("%m/%d/%Y"))) %>% 
+    # Adding a modified_date to include game number
+  mutate(modified_date = paste(date, game_number)) 
+
+
+# The plot for the differences
+diff_plot <- differences %>% 
+  ggplot(aes(x = modified_date, y = diff, fill = winner)) +
+  # fivethirtyeight theme
+  theme_fivethirtyeight() +
+  # Custom coloring for barchart
+  scale_fill_manual("legend", values = c("Andrew" = "#497999", "Yuri" = "#FFA500")) +
+  geom_bar(stat = "identity") +
+  # Points for andrew
+  geom_point(data = differences %>% filter(winner == "Andrew"), aes(x = modified_date, y = andrew_score), color = "#497999") +
+  geom_point(data = differences %>% filter(!winner == "Andrew"), aes(x = modified_date, y = andrew_score), color = "#497999", alpha = .15) +
+  # points for yuri
+  geom_point(data = differences %>% filter(winner == "Yuri"), aes(x = modified_date, y = yuri_score), color = "#FFA500") +
+  geom_point(data = differences %>% filter(!winner == "Yuri"), aes(x = modified_date, y = yuri_score), color = "#FFA500", alpha = .15) +
+  # adjusting the theme
+  theme(
+    axis.text.x = element_text(size = 7, angle = 45),
+    # reinstituting xlab and ylab because the themefivethirtyeight removes it.
+    axis.title = element_text(),
+    # removing bg color
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white"),
+    legend.background = element_rect(fill = "white")
+  ) +
+  labs(x = "Date and Game",
+       y = "Score Difference") 
+  
+
+#### Max Score
+max <- differences %>% 
+  filter(max_score == 11) %>% 
+  select(yuri, andrew, date) %>% 
+  rename(Yuri = yuri, 
+         Andrew = andrew) %>% 
+  gather("key", "value", -date) %>%
+  arrange(desc(value)) %>% 
+  slice(1)
+
+### Beat
+beat <- differences %>% 
+  # filter(max_score == 11) %>% 
+  select(diff, winner, date, yuri, andrew) %>% 
+  mutate(diff = abs(diff)) %>% 
+  arrange(desc(diff)) %>% 
+  slice(1)
+
+### Streak
+streak <- differences %>% 
+  dplyr::arrange(game_number) %>% 
+  dplyr::arrange(date)
+streak <- data.frame(unclass(rle(as.vector(streak$winner)))) %>% 
+  arrange(desc(lengths)) %>% 
+  slice(1)
+
+```
+
+Row
+-----------------------------------------------------------------------
+
+### Game Scores and Differentials
+
+```{r}
+plotly::ggplotly(diff_plot, tooltip = c("y"))
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Record (All Games)
+
+```{r}
+differences %>% 
+  select(date, winner) %>%
+  group_by(winner) %>% 
+  summarise(
+    Wins = n()
+  ) %>% 
+  rename(Player = winner) %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options  = c("responsive")) %>% 
+  row_spec(1, background = "#bcd4e5") %>% 
+  row_spec(2, background = "#ffedce") %>% 
+  column_spec(1, bold = T)
+```
+
+### Record (11-point Games)
+
+```{r}
+differences %>% 
+  filter(max_score == 11) %>% 
+  select(date, winner) %>%
+  group_by(winner) %>% 
+  summarise(
+    Wins = n()
+  ) %>% 
+  rename(Player = winner) %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options  = c("responsive")) %>% 
+  row_spec(1, background = "#bcd4e5") %>% 
+  row_spec(2, background = "#ffedce") %>% 
+  column_spec(1, bold = T)
+```
+
+### Record (Last 15 Games)
+
+```{r}
+differences %>% 
+  dplyr::arrange(game_number) %>% 
+  dplyr::arrange(date) %>%
+  tail(n = 15) %>% 
+  select(date, winner) %>%
+  group_by(winner) %>% 
+  summarise(
+    Wins = n()
+  ) %>% 
+  rename(Player = winner) %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options  = c("responsive")) %>% 
+  row_spec(1, background = "#bcd4e5") %>% 
+  row_spec(2, background = "#ffedce") %>% 
+  column_spec(1, bold = T)
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+### All Scores
+```{r}
+differences %>% 
+  # arranging to reverse chronological
+  dplyr::arrange(desc(game_number)) %>% 
+  dplyr::arrange(desc(date)) %>% 
+  # only selecting relevant columns
+  select(date, winner, andrew, yuri, game_number) %>% 
+  # making it pretty
+  rename(
+    Date = date,
+    Winner  = winner,
+    `Yuri Score` = yuri,
+    `Andrew Score` = andrew,
+    `Game Number` = game_number
+  ) %>% 
+  # For Kableextra, making the winner name the right color
+  mutate(Winner = 
+    case_when(
+      Winner == "Yuri" ~ cell_spec(Winner, background = "#FFA500", color = "white"),
+      TRUE ~ cell_spec(Winner, background = "#497999", color = "white")
+    )
+  ) %>% 
+  kable(escape = F) %>% 
+  kable_styling("hover")
+```
+
+### #FunFacts
+**Highest Scored Game (11-pt Games):** `r max$value` points by `r max$key` on `r max$date`
+<div style = "height: 10px;"> </div>
+**Biggest Beat:** `r beat$winner` won by `r beat$diff` points on `r beat$date` (`r beat$yuri` to `r beat$andrew`)
+<div style = "height: 10px;"> </div>
+**Longest Streak:** `r streak$values` has the longest winning streak, with a streak of `r streak$lengths` games.
+<div style = "height: 10px;"> </div>
+
+**Win Distribution by Game Number:**
+```{r}
+ggplotly(differences %>% 
+           select(winner, game_number) %>% 
+           group_by(winner, game_number) %>% 
+           summarise(
+             Wins = n()
+             ) %>%
+           ungroup() %>% 
+           ggplot(aes(x = game_number, y = Wins, group = winner, fill = winner)) +theme_fivethirtyeight() +
+           geom_bar(stat = "identity", position = "dodge") +
+           scale_fill_manual("legend", values = c("Andrew" = "#497999", "Yuri" = "#FFA500")) +
+         # adjusting the theme
+           theme(
+             # reinstituting xlab and ylab because the themefivethirtyeight removes it.
+             axis.title = element_text(),
+             # removing bg color
+             panel.background = element_rect(fill = "white"),
+             plot.background = element_rect(fill = "white"),
+             legend.background = element_rect(fill = "white")
+             ),
+         height = 300
+)
+
+```
