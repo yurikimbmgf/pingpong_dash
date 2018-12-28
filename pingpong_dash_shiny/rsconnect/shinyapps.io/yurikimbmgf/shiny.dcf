@@ -5,6 +5,6 @@ account: yurikimbmgf
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 622607
-bundleId: 1782375
+bundleId: 1782544
 url: https://yurikimbmgf.shinyapps.io/shiny/
-when: 1545710138.51792
+when: 1545721790.43685

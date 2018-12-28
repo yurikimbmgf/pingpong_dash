@@ -28,7 +28,7 @@ library(shinydashboard)
 
 
 # # loading data ------------------------------------------------------------
-# 
+
 # # loading a publicly available google sheet
 # scores_raw <- gs_url("https://docs.google.com/spreadsheets/d/1EP4jg-3bTn5JoMYo4p0shUn3uFmAIhCHaF-yo8ODq94/edit#gid=525351072") %>%
 #   gs_read()
@@ -319,15 +319,15 @@ ui <- fixedPage(
                                 br(),
                                 plotlyOutput("main_plot"),
 
-                                 box(title = "Record (All Games)", 
+                                 box(title = h4("Record (All Games)"), 
                                      # status = "primary",
                                      tableOutput("record_allgames"),
                                      width = 4),
-                                 box(title = "Record (11-point Games)", 
+                                 box(title = h4("Record (11-point Games)"), 
                                      # status = "primary",
                                      tableOutput("record_11pt"),
                                      width = 4),
-                                 box(title = "Record (Last 15 Games)", 
+                                 box(title = h4("Record (Last 15 Games)"), 
                                      # status = "primary",
                                      tableOutput("record_15"),
                                      width = 4)
