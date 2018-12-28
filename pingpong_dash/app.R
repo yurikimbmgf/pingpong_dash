@@ -39,7 +39,13 @@ ui <- fixedPage(
                                 box(title = h4("Record (Last 15 Games)"), 
                                     # status = "primary",
                                     tableOutput("record_15"),
-                                    width = 4)
+                                    width = 4),
+                                box(title = h4("Total Wins (All Games)"),
+                                    plotlyOutput("running_wins"),
+                                    width = 6),
+                                box(title = h4("Total Wins (11-point Games)"),
+                                    plotlyOutput("running_wins11"),
+                                    width = 6)
                                 ),
                        tabPanel("Data Table",
                                 br(),
@@ -96,7 +102,7 @@ server <- function(input, output, session) {
       mutate(winner = case_when(
         diff > 0 ~ "Andrew",
         TRUE ~ "Yuri")) %>%
-      ungroup()
+      ungroup() 
     scores_raw
   })
   
@@ -260,6 +266,85 @@ server <- function(input, output, session) {
   output$streak_values <- renderText(streak() %>% select(values) %>% as_vector())
   output$streak_lengths <- renderText(streak() %>% select(lengths) %>% as_vector())
   
+  
+  running_wins_df <- reactive({running_wins_df2 <- scores() %>% 
+      dplyr::arrange(game_number) %>%
+      dplyr::arrange(date) %>% 
+      # getting numbers of games won by person per date
+      group_by(date, winner) %>%
+      mutate(temp_wins = 1) %>% 
+      mutate(temp_wins2 = sum(temp_wins)) %>% 
+      select(date, winner, temp_wins2) %>% 
+      distinct() %>% 
+      group_by(winner) %>% 
+      mutate(`Running Wins` = cumsum(temp_wins2)) %>% 
+      ungroup()
+    running_wins_df2
+  })
+  
+  running_wins_df11 <- reactive({running_wins_df3 <- scores() %>% 
+    filter(!`Max Score` == 21) %>% 
+    dplyr::arrange(game_number) %>%
+    dplyr::arrange(date) %>% 
+    # getting numbers of games won by person per date
+    group_by(date, winner) %>%
+    mutate(temp_wins = 1) %>% 
+    mutate(temp_wins2 = sum(temp_wins)) %>% 
+    select(date, winner, temp_wins2) %>% 
+    distinct() %>% 
+    group_by(winner) %>% 
+    mutate(`Running Wins` = cumsum(temp_wins2)) %>% 
+    ungroup()
+  running_wins_df3
+  })
+  
+  ### Beat
+  beat <- reactive({beat_df <- differences() %>%
+    # filter(max_score == 11) %>%
+    select(diff, winner, date, Yuri, Andrew) %>%
+    mutate(diff = abs(diff)) %>%
+    arrange(desc(diff)) %>%
+    slice(1)
+  beat_df
+  })
+  
+  
+  output$running_wins <- renderPlotly(
+    ggplotly(ggplot(running_wins_df(), aes(x = ymd(date), y = `Running Wins`, group = winner, color = winner)) +
+               geom_line(size = 1) +
+               # fivethirtyeight theme
+               theme_fivethirtyeight() +
+               scale_colour_manual("legend", values = c("Andrew" = "#497999", "Yuri" = "#FFA500")) +
+               theme(
+                 axis.title = element_text(),
+                 # removing bg color
+                 panel.background = element_rect(fill = "white"),
+                 plot.background = element_rect(fill = "white"),
+                 legend.background = element_rect(fill = "white")
+               ) +
+               labs(x = "Total Wins",
+                    y = "Date")
+             ,
+             height = 300
+    ))  
+  output$running_wins11 <- renderPlotly(
+    ggplotly(ggplot(running_wins_df11(), aes(x = ymd(date), y = `Running Wins`, group = winner, color = winner)) +
+               geom_line(size = 1) +
+               # fivethirtyeight theme
+               theme_fivethirtyeight() +
+               scale_colour_manual("legend", values = c("Andrew" = "#497999", "Yuri" = "#FFA500")) +
+               theme(
+                 axis.title = element_text(),
+                 # removing bg color
+                 panel.background = element_rect(fill = "white"),
+                 plot.background = element_rect(fill = "white"),
+                 legend.background = element_rect(fill = "white")
+               ) +
+               labs(x = "Total Wins",
+                    y = "Date")
+             ,
+             height = 300
+    ))
   
 }
 
