@@ -84,8 +84,8 @@ server <- function(input, output, session) {
   
   # DF: Main data pull from google form
   scores <- reactive({
-    invalidateLater(60000,session=session)
-    scores_raw <- gs_url("https://docs.google.com/spreadsheets/d/1EP4jg-3bTn5JoMYo4p0shUn3uFmAIhCHaF-yo8ODq94/edit#gid=525351072") %>%
+    # invalidateLater(60000,session=session)
+    scores_raw <- gs_url("https://docs.google.com/spreadsheets/d/1ozaXrwEWN04xiN_c9VO_Zfr_xhMKRtRuYNVxJg_KL6A/edit#gid=525351072") %>%
       gs_read() %>% 
       # conforming and merging dates
       mutate(Timestamp = lubridate::mdy_hms(Timestamp)) %>%
